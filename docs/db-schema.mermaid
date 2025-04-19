@@ -5,3 +5,21 @@ erDiagram
         file_name string "The file name originally imported"
         content string "The text content of the project"
     }
+    Chapter {
+        id int PK "auto_increment"
+        project_id int FK "The project this chapter belongs to"
+        friendly_name string "The user-friendly name of the chapter"
+        file_name string "The file name originally imported"
+        content string "The text content of the chapter"
+    }
+
+    Scene {
+        id int PK "auto_increment"
+        chapter_id int FK "The chapter this scene belongs to"
+        friendly_name string "The user-friendly name of the scene"
+        file_name string "The file name originally imported"
+        content string "The text content of the scene"
+    }
+
+    Project ||--o{ Chapter : has
+    Chapter ||--o{ Scene : has

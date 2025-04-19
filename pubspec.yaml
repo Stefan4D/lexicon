@@ -38,6 +38,7 @@ dependencies:
   path: ^1.9.1
   flutter_riverpod: ^2.6.1
   mime: ^2.0.0
+  sqflite_common_ffi: ^2.3.5
 
 dev_dependencies:
   flutter_test:

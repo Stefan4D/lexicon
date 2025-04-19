@@ -20,11 +20,23 @@ This means Lexicon supports most text file formats from popular writing applicat
 
 ## How does it work?
 
-Lexicon uses the `flutter` framework to provide a cross-platform application that can run on both Android and iOS devices. The application allows users to load text files from their device storage, analyze the frequency of words in the text, and visualize the data in various formats such as bar charts and pie charts.
+Lexicon uses the `flutter` framework to provide a cross-platform application that can run on Mac OS, Windows, and Linux devices. The application allows users to load text files from their device storage, analyse the frequency of words in the text, and visualise the data in various formats such as bar charts and pie charts.
 
 When the user loads a text file, Lexicon processes the text to extract the words and their frequencies. The application then displays the data in a user-friendly interface, allowing users to explore the word frequency data in detail.
 
 The text content itself is stored in a local SQLite database, which allows for efficient storage and retrieval of the text data. The application also provides a search feature that allows users to search for specific words or phrases in the text.
+
+### Loading text files
+
+Lexicon will load text files on the following assumptions:
+
+- A project consists of 1 or more chapters
+- A chapter consists of 1 or more scenes
+- If there is only a single file, it is assumed to be a single chapter with a single scene
+
+In practice this means that all text content is stored in the Scene table. Based on the parent ID of the scene (chapter ID) the application will be able to determine the chapter and project.
+
+This has been designed so as to support the split chapters and scenes functionality of Scrivener and Ulysses.
 
 ## Project Structure
 
