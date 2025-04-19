@@ -38,6 +38,38 @@ In practice this means that all text content is stored in the Scene table. Based
 
 This has been designed so as to support the split chapters and scenes functionality of Scrivener and Ulysses.
 
+### Limitations
+
+Lexicon is currently in development and may have some limitations. Some of the known limitations include:
+
+- The application may not support all text file formats or may have limited support for certain features in some formats.
+- The application may not handle very large text files efficiently.
+- The application may have some bugs or issues that need to be resolved.
+- The application may not have all the features or functionality that users expect from a word frequency analyser.
+- The application may not have a comprehensive user guide or documentation.
+- The application may not have a fully responsive design for all screen sizes and devices.
+- The application may not have all the accessibility features that some users may need.
+- The application may not have all the performance optimizations that are possible.
+- The application is currently limited to English text files and does not yet support other languages or character sets (planned future improvement).
+- The application does not yet implement an "exclude" feature to ignore common words (e.g. "the", "and", "is") in the word frequency analysis (planned future improvement).
+
+### Future Improvements
+
+- Add custom word exclusion lists e.g. to ignore character names or common words in the book "universe"
+- Add support for additional file formats
+- Add support for additional languages and character sets
+- Improve performance for large text files
+- Improve the user interface and user experience
+- Add more visualisation options for the word frequency data
+- Add more features and functionality based on user feedback and requests
+- Add a comprehensive user guide and documentation
+- Add more accessibility features for users with disabilities
+- Add more performance optimisations for better speed and efficiency
+- Add more testing and quality assurance to ensure the application is stable and reliable
+- Add ability for users to save their settings e.g. word exclusion lists, visualisation options, etc. for use on other devices
+- Add ability to save overall application state and settings to system / cloud storage e.g. iCloud, Google Drive, Dropbox, Onedrive, etc.
+- Add ability for users to export their word frequency data in various formats (e.g. CSV, JSON, etc.)
+
 ## Project Structure
 
 | Directory       | Purpose                                                                               |

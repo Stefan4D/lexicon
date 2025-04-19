@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:lexicon/services/word_frequency_analyser.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:file_picker/file_picker.dart';
+
+import 'package:lexicon/constants/navigation_items.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,124 +24,98 @@ class LexiconApp extends StatelessWidget {
     return MaterialApp(
       title: 'Lexicon',
       theme: ThemeData(
+        useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
       ),
-      home: const HomeScreen(title: 'Lexicon Home Page'),
+      home: const BaseCanvas(title: 'Lexicon Home Page'),
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.title});
+class BaseCanvas extends StatefulWidget {
+  const BaseCanvas({super.key, required this.title});
 
   final String title;
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<BaseCanvas> createState() => _BaseCanvasState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  String? _fileContent;
-  Map<String, int> _frequencyCount = {};
-  List<MapEntry<String, int>> _topNWords = [];
-
-  // Method to pick a file and read its content
-  Future<void> _pickFile() async {
-    // Show file picker dialog and get the file path
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['txt'],
-    );
-
-    if (result != null) {
-      // Get the file path and read it
-      String filePath = result.files.single.path!;
-      File file = File(filePath);
-      String fileContent = await file.readAsString();
-
-      // Process the content using WordFrequencyAnalyser
-      setState(() {
-        _fileContent = fileContent;
-        _frequencyCount = WordFrequencyAnalyser.countWordFrequency(fileContent);
-        _topNWords = WordFrequencyAnalyser.getTopNWords(_frequencyCount, 5);
-      });
-    }
-  }
+class _BaseCanvasState extends State<BaseCanvas> {
+  int selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    // final String testString =
-    //     'Hello, Lexicon! Do you like bananas? I like bananas. I like apples too. Do you like apples? One thing I will never get over is how much I like bananas. Bananas are the best fruit. Apples are good too, but bananas are better.';
+    var colorScheme = Theme.of(context).colorScheme;
 
-    // Map<String, int> frequencyCount = WordFrequencyAnalyser.countWordFrequency(
-    //   testString,
-    // );
+    final Widget page = navigationItems[selectedIndex].page;
 
-    // var topNWords = WordFrequencyAnalyser.getTopNWords(frequencyCount, 5);
+    final Widget contentPane = ColoredBox(
+      color: colorScheme.primaryContainer,
+      child: AnimatedSwitcher(
+        duration: Duration(milliseconds: 200),
+        child: page,
+      ),
+    );
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // const Text('This is the Home screen'),
-            // // Need to refactor this to use a ListView or similar widget so it is scrollable
-            // // for (var entry in frequencyCount.entries)
-            // //   Text('${entry.key}: ${entry.value}'),
-            // // const SizedBox(height: 20),
-            // const Text(
-            //   'Top 5 words:',
-            //   style: TextStyle(fontWeight: FontWeight.bold),
-            // ),
-            // for (var entry in topNWords) Text('${entry.key}: ${entry.value}'),
-            // const SizedBox(height: 20),
-            // Display the file content if available
-            if (_fileContent != null) Text('File content:\n$_fileContent\n\n'),
-
-            // Display the word frequency count
-            // if (_frequencyCount.isNotEmpty)
-            //   ..._frequencyCount.entries.map(
-            //     (entry) => Text('${entry.key}: ${entry.value}'),
-            //   ),
-            if (_topNWords.isNotEmpty)
-              const Text(
-                'Top 5 words:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            for (var entry in _topNWords) Text('${entry.key}: ${entry.value}'),
-
-            SizedBox(height: 20),
-
-            // Button to pick a file
-            ElevatedButton(
-              onPressed: _pickFile,
-              child: Text('Pick a .txt File'),
-            ),
-          ],
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 450) {
+            // Use a more mobile-friendly layout with BottomNavigationBar on narrow screens.
+            return Column(
+              children: [
+                Expanded(child: contentPane),
+                SafeArea(
+                  child: BottomNavigationBar(
+                    items:
+                        navigationItems
+                            .map(
+                              (item) => BottomNavigationBarItem(
+                                icon: Icon(item.icon),
+                                label: item.label,
+                              ),
+                            )
+                            .toList(),
+                    currentIndex: selectedIndex,
+                    onTap: (value) {
+                      setState(() {
+                        selectedIndex = value;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            );
+          } else {
+            return Row(
+              children: [
+                SafeArea(
+                  child: NavigationRail(
+                    extended: constraints.maxWidth >= 600,
+                    destinations:
+                        navigationItems
+                            .map(
+                              (item) => NavigationRailDestination(
+                                icon: Icon(item.icon),
+                                label: Text(item.label),
+                              ),
+                            )
+                            .toList(),
+                    selectedIndex: selectedIndex,
+                    onDestinationSelected: (value) {
+                      setState(() {
+                        selectedIndex = value;
+                      });
+                    },
+                  ),
+                ),
+                Expanded(child: contentPane),
+              ],
+            );
+          }
+        },
       ),
     );
-  }
-}
-
-class AllProjectsScreen extends StatelessWidget {
-  const AllProjectsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Placeholder();
-  }
-}
-
-class ProjectScreen extends StatelessWidget {
-  const ProjectScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Placeholder();
   }
 }
