@@ -1,0 +1,13 @@
+Hello, Lexicon! Do you like bananas? I like bananas. I like apples too. Do you like apples? One thing I will never get over is how much I like bananas. Bananas are the best fruit. Apples are good too, but bananas are better.
+
+This is a second paragraph of text to see how the import handles it.
+
+This is a third paragraph.
+
+
+And this is a fourth paragraph that is two line spaces away from the previous.
+
+
+Here are some numbers: 1, 2, 3, 4.  And these are some spaces in quotes "     ".
+
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1.
