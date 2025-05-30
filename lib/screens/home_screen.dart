@@ -1,88 +1,81 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:lexicon/services/word_frequency_analyser.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lexicon/main.dart'; // Import main.dart to access selectedNavIndexProvider
+import 'package:lexicon/services/project_import_service.dart';
+import 'package:lexicon/utils/file_utils.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
+  // Changed to ConsumerWidget
   const HomeScreen({super.key});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  String? _fileContent;
-
-  Map<String, int> _frequencyCount = {};
-
-  List<MapEntry<String, int>> _topNWords = [];
-
-  // Method to pick a file and read its content
-  Future<void> _pickFile() async {
-    // Show file picker dialog and get the file path
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['txt'],
+  Future<void> _handlePickFileAndNavigate(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final pickedFileResult = await pickFile(
+      context: context,
+      allowedExtensions: ['txt', 'md', 'docx', 'scrivx'],
     );
 
-    if (result != null) {
-      // Get the file path and read it
-      String filePath = result.files.single.path!;
-      File file = File(filePath);
-      String fileContent = await file.readAsString();
+    if (pickedFileResult != null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Importing project...')));
 
-      // Process the content using WordFrequencyAnalyser
-      setState(() {
-        _fileContent = fileContent;
-        _frequencyCount = WordFrequencyAnalyser.countWordFrequency(fileContent);
-        _topNWords = WordFrequencyAnalyser.getTopNWords(_frequencyCount, 5);
-      });
+      try {
+        final importService = await ref.read(
+          projectImportServiceProvider.future,
+        );
+        final newProject = await importService.importProject(pickedFileResult);
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+        if (newProject != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Project "${newProject.projectName}" imported successfully!',
+              ),
+            ),
+          );
+          // Navigate to AllProjectsScreen (index 1)
+          ref.read(selectedNavIndexProvider.notifier).state = 1;
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to import project. Check logs.'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error importing project: $e')));
+      }
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Added WidgetRef ref
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text("Home Page"),
-      ),
+      backgroundColor: Colors.transparent,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            // const Text('This is the Home screen'),
-            // // Need to refactor this to use a ListView or similar widget so it is scrollable
-            // // for (var entry in frequencyCount.entries)
-            // //   Text('${entry.key}: ${entry.value}'),
-            // // const SizedBox(height: 20),
-            // const Text(
-            //   'Top 5 words:',
-            //   style: TextStyle(fontWeight: FontWeight.bold),
-            // ),
-            // for (var entry in topNWords) Text('${entry.key}: ${entry.value}'),
-            // const SizedBox(height: 20),
-            // Display the file content if available
-            if (_fileContent != null) Text('File content:\n$_fileContent\n\n'),
-
-            // Display the word frequency count
-            // if (_frequencyCount.isNotEmpty)
-            //   ..._frequencyCount.entries.map(
-            //     (entry) => Text('${entry.key}: ${entry.value}'),
-            //   ),
-            if (_topNWords.isNotEmpty)
-              const Text(
-                'Top 5 words:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            for (var entry in _topNWords) Text('${entry.key}: ${entry.value}'),
-
-            SizedBox(height: 20),
-
-            // Button to pick a file
-            ElevatedButton(
-              onPressed: _pickFile,
-              child: Text('Pick a .txt File'),
+            ElevatedButton.icon(
+              onPressed:
+                  () => _handlePickFileAndNavigate(
+                    context,
+                    ref,
+                  ), // Pass context and ref
+              icon: const Icon(Icons.file_open),
+              label: const Text('Import Project & View All'), // Updated label
             ),
           ],
         ),

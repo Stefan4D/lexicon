@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
-import '/models/navigation_item.dart';
+import 'package:lexicon/models/navigation_item.dart'; // Corrected import path
 
-import '/screens/all_projects_screen.dart';
-import '/screens/project_screen.dart';
-import '/screens/home_screen.dart';
+import 'package:lexicon/screens/all_projects_screen.dart'; // Corrected import path
+import 'package:lexicon/screens/home_screen.dart'; // Corrected import path
+import 'package:lexicon/screens/settings_screen.dart'; // Added import for SettingsScreen
 
 final List<NavigationItem> navigationItems = [
-  NavigationItem(label: 'Home', icon: Icons.home, page: HomeScreen()),
+  NavigationItem(
+    label: 'Home',
+    icon: Icons.home,
+    page: const HomeScreen(),
+  ), // Added const
   NavigationItem(
     label: 'All Projects',
     icon: Icons.list,
-    page: AllProjectsScreen(),
+    page: const AllProjectsScreen(), // Added const
   ),
-  NavigationItem(label: 'Project', icon: Icons.book, page: ProjectScreen()),
+  NavigationItem(
+    label: 'Settings',
+    icon: Icons.settings,
+    page: const SettingsScreen(), // Added SettingsScreen
+  ),
 ];

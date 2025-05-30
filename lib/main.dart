@@ -2,8 +2,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:lexicon/constants/navigation_items.dart';
+
+// Provider for the selected navigation index
+final selectedNavIndexProvider = StateProvider<int>((ref) => 0);
+
+// Provider for the detail page content
+final detailPageProvider = StateProvider<Widget?>((ref) => null);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,7 +20,7 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   }
 
-  runApp(const LexiconApp());
+  runApp(const ProviderScope(child: LexiconApp()));
 }
 
 class LexiconApp extends StatelessWidget {
@@ -32,29 +39,34 @@ class LexiconApp extends StatelessWidget {
   }
 }
 
-class BaseCanvas extends StatefulWidget {
+class BaseCanvas extends ConsumerStatefulWidget {
   const BaseCanvas({super.key, required this.title});
 
   final String title;
 
   @override
-  State<BaseCanvas> createState() => _BaseCanvasState();
+  ConsumerState<BaseCanvas> createState() => _BaseCanvasState();
 }
 
-class _BaseCanvasState extends State<BaseCanvas> {
-  int selectedIndex = 0;
-
+class _BaseCanvasState extends ConsumerState<BaseCanvas> {
   @override
   Widget build(BuildContext context) {
     var colorScheme = Theme.of(context).colorScheme;
+    final selectedIndex = ref.watch(selectedNavIndexProvider);
+    final detailPage = ref.watch(detailPageProvider);
 
-    final Widget page = navigationItems[selectedIndex].page;
+    final Widget pageToShow;
+    if (detailPage != null) {
+      pageToShow = detailPage;
+    } else {
+      pageToShow = navigationItems[selectedIndex].page;
+    }
 
     final Widget contentPane = ColoredBox(
       color: colorScheme.primaryContainer,
       child: AnimatedSwitcher(
-        duration: Duration(milliseconds: 200),
-        child: page,
+        duration: const Duration(milliseconds: 200),
+        child: pageToShow, // Use pageToShow here
       ),
     );
 
@@ -79,9 +91,9 @@ class _BaseCanvasState extends State<BaseCanvas> {
                             .toList(),
                     currentIndex: selectedIndex,
                     onTap: (value) {
-                      setState(() {
-                        selectedIndex = value;
-                      });
+                      ref.read(detailPageProvider.notifier).state =
+                          null; // Clear detail page
+                      ref.read(selectedNavIndexProvider.notifier).state = value;
                     },
                   ),
                 ),
@@ -104,9 +116,9 @@ class _BaseCanvasState extends State<BaseCanvas> {
                             .toList(),
                     selectedIndex: selectedIndex,
                     onDestinationSelected: (value) {
-                      setState(() {
-                        selectedIndex = value;
-                      });
+                      ref.read(detailPageProvider.notifier).state =
+                          null; // Clear detail page
+                      ref.read(selectedNavIndexProvider.notifier).state = value;
                     },
                   ),
                 ),
