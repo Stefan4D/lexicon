@@ -11,6 +11,7 @@ import 'package:sqflite_common/sqlite_api.dart'; // For Database type
 import 'package:sqflite/sqflite.dart' as sqflite; // Import for firstIntValue
 import 'package:lexicon/screens/settings_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:lexicon/screens/ngram_analysis_screen.dart'; // Added import
 
 // Parameter class for topNWordsProvider
 class TopNWordsParams {
@@ -35,6 +36,25 @@ class TopNWordsParams {
 
   @override
   int get hashCode => Object.hash(topN, useStopWords, stopWords);
+}
+
+// Parameter class for topNNGramsProvider
+class TopNNGramsParams {
+  final int nValueForNGram;
+  final int topNCount;
+
+  TopNNGramsParams({required this.nValueForNGram, required this.topNCount});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TopNNGramsParams &&
+          runtimeType == other.runtimeType &&
+          nValueForNGram == other.nValueForNGram &&
+          topNCount == other.topNCount;
+
+  @override
+  int get hashCode => Object.hash(nValueForNGram, topNCount);
 }
 
 // State provider for the current project being viewed/edited on this screen
@@ -103,6 +123,63 @@ final topNWordsProvider = FutureProvider.autoDispose.family<
   } catch (e, stackTrace) {
     print(
       '[TopNWordsProvider] Error fetching top N words for path $projectDbPath: $e\n$stackTrace',
+    );
+    rethrow;
+  }
+});
+
+// Provider for top N N-grams
+final topNNGramsProvider = FutureProvider.autoDispose.family<
+  Map<String, int>,
+  TopNNGramsParams
+>((ref, params) async {
+  final analysisService = ref.watch(analysisServiceProvider);
+  final currentProject = ref.watch(_currentProjectProvider);
+
+  if (currentProject == null || currentProject.projectId == null) {
+    print(
+      '[TopNNGramsProvider] No current project or project ID, returning empty.',
+    );
+    return {};
+  }
+
+  final String? projectDbPath = currentProject.dbPath;
+
+  if (projectDbPath == null || projectDbPath.isEmpty) {
+    print(
+      '[TopNNGramsProvider] Error: project.dbPath is null or empty. Project ID: ${currentProject.projectId}',
+    );
+    return {};
+  }
+  print(
+    '[TopNNGramsProvider] Using Project DB Path from model: $projectDbPath',
+  );
+
+  try {
+    final DatabaseHelper projectDbHelper = await ref.watch(
+      projectDatabaseHelperProvider(projectDbPath).future,
+    );
+    final Database? projectSpecificDb = projectDbHelper.db;
+
+    if (projectSpecificDb == null) {
+      print(
+        '[TopNNGramsProvider] Error: projectSpecificDb is null for path: $projectDbPath',
+      );
+      return {};
+    }
+
+    final nGrams = await analysisService.getTopNNGrams(
+      projectSpecificDb,
+      params.nValueForNGram,
+      params.topNCount,
+    );
+    print(
+      '[TopNNGramsProvider] Got ${nGrams.length} ${params.nValueForNGram}-grams from path: $projectDbPath',
+    );
+    return nGrams;
+  } catch (e, stackTrace) {
+    print(
+      '[TopNNGramsProvider] Error fetching top N ${params.nValueForNGram}-grams for path $projectDbPath: $e\\n$stackTrace',
     );
     rethrow;
   }
@@ -352,6 +429,13 @@ class _ProjectScreenState extends ConsumerState<ProjectScreen> {
           _buildStatsCard(context, theme, textTheme, currentProject),
           const SizedBox(height: 24),
           _buildWordFrequencyCard(context, theme, textTheme, currentProject),
+          const SizedBox(height: 24),
+          _buildNGramFrequencyCard(
+            context,
+            theme,
+            textTheme,
+            currentProject,
+          ), // Added N-gram card
           const SizedBox(height: 24),
           _buildContentOverviewCard(context, textTheme, currentProject),
         ],
@@ -643,6 +727,120 @@ class _ProjectScreenState extends ConsumerState<ProjectScreen> {
                   ),
                 );
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNGramFrequencyCard(
+    BuildContext context,
+    ThemeData theme,
+    TextTheme textTheme,
+    Project project,
+  ) {
+    final nGramParams = TopNNGramsParams(nValueForNGram: 3, topNCount: 5);
+    final topNGramsValue = ref.watch(topNNGramsProvider(nGramParams));
+
+    return Card(
+      elevation: 2.0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Top 5 Trigrams (3-word phrases)',
+              style: textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8), // Reduced spacing before divider
+            const Divider(),
+            topNGramsValue.when(
+              data: (nGrams) {
+                if (nGrams.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(child: Text('No trigram data available.')),
+                  );
+                }
+                final sortedEntries =
+                    nGrams.entries.toList()
+                      ..sort((a, b) => b.value.compareTo(a.value));
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children:
+                        sortedEntries.map((entry) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 4.0,
+                              horizontal: 16.0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    entry.key,
+                                    style: theme.textTheme.titleMedium,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  entry.value.toString(),
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                  ),
+                );
+              },
+              loading: () {
+                return const Padding(
+                  // Added padding for consistency
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              },
+              error: (error, stackTrace) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Center(child: Text('Error loading trigrams: $error')),
+                );
+              },
+            ),
+            const Divider(
+              height: 32,
+              thickness: 1,
+            ), // Added Divider before button
+            Center(
+              child: ElevatedButton.icon(
+                icon: const Icon(
+                  Icons.analytics_outlined,
+                ), // Or Icons.grid_view or similar
+                label: const Text('View N-gram Details'),
+                onPressed: () {
+                  // Set the NGramAnalysisScreen as the detail page content
+                  ref
+                      .read(detailPageProvider.notifier)
+                      .state = NGramAnalysisScreen(project: project);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.secondaryContainer,
+                  foregroundColor: theme.colorScheme.onSecondaryContainer,
+                ),
+              ),
             ),
           ],
         ),

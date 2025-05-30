@@ -105,18 +105,48 @@ class AnalysisService {
     return frequencies;
   }
 
+  /// Generates n-grams from a list of tokens.
+  ///
+  /// [tokens] The list of words to process.
+  /// [n] The number of words in each n-gram.
+  List<String> _generateNGrams(List<String> tokens, int n) {
+    print(
+      '[AnalysisService._generateNGrams] Generating $n-grams from ${tokens.length} tokens.',
+    );
+    if (n <= 0) {
+      print('[AnalysisService._generateNGrams] n must be positive.');
+      return [];
+    }
+    if (tokens.length < n) {
+      print(
+        '[AnalysisService._generateNGrams] Not enough tokens to form $n-grams.',
+      );
+      return [];
+    }
+
+    final List<String> nGrams = [];
+    for (int i = 0; i <= tokens.length - n; i++) {
+      nGrams.add(tokens.sublist(i, i + n).join(' '));
+    }
+    print(
+      '[AnalysisService._generateNGrams] Generated ${nGrams.length} $n-grams.',
+    );
+    // print('[AnalysisService._generateNGrams] First 5 n-grams: ${nGrams.take(5).toList()}');
+    return nGrams;
+  }
+
   /// Gets word frequencies for a given project.
   ///
   /// [projectDb] is the opened database connection for the specific project.
-  /// [useStopWords] whether to filter out stop words.
-  /// [customStopWords] an optional list of custom stop words to use instead of the default.
+  /// [useStopWords] whether to filter out stop words from tokens.
+  /// [customStopWords] an optional list of custom stop words.
   Future<Map<String, int>> getWordFrequencies(
     Database projectDb, {
     bool useStopWords = false,
     List<String>? customStopWords,
   }) async {
     print(
-      '[AnalysisService.getWordFrequencies] Called with useStopWords: $useStopWords, customStopWords count: ${customStopWords?.length ?? 'N/A'}',
+      '[AnalysisService.getWordFrequencies] Called. useStopWords: $useStopWords, customStopWords count: ${customStopWords?.length ?? 'N/A'}',
     );
     final allText = await _getAllTextForProject(projectDb);
     if (allText.isEmpty) {
@@ -132,7 +162,7 @@ class AnalysisService {
 
     if (useStopWords) {
       print(
-        '[AnalysisService.getWordFrequencies] Applying stop word filtering.',
+        '[AnalysisService.getWordFrequencies] Applying stop word filtering to tokens.',
       );
       final List<String> stopWordsToUse =
           (customStopWords != null && customStopWords.isNotEmpty)
@@ -183,6 +213,109 @@ class AnalysisService {
 
     final topN = sortedWords.take(n);
     print('[AnalysisService.getTopNWords] Returning ${topN.length} top words.');
+    return Map.fromEntries(topN);
+  }
+
+  /// Gets n-gram frequencies for a given project.
+  ///
+  /// [projectDb] is the opened database connection for the specific project.
+  /// [nValueForNGram] is the 'n' in n-gram (e.g., 3 for trigrams).
+  /// [useStopWords] whether to filter out stop words from tokens before generating n-grams.
+  /// [customStopWords] an optional list of custom stop words.
+  Future<Map<String, int>> getNGramFrequencies(
+    Database projectDb,
+    int nValueForNGram, {
+    bool useStopWords =
+        false, // Kept for future use, but will be false by default from provider
+    List<String>? customStopWords, // Kept for future use
+  }) async {
+    print(
+      '[AnalysisService.getNGramFrequencies] Called for $nValueForNGram-grams. useStopWords: $useStopWords, customStopWords count: ${customStopWords?.length ?? 'N/A'}',
+    );
+    final allText = await _getAllTextForProject(projectDb);
+    if (allText.isEmpty) {
+      print(
+        '[AnalysisService.getNGramFrequencies] All text is empty, returning empty frequencies.',
+      );
+      return {};
+    }
+    List<String> tokens = _tokenizeText(allText);
+    print(
+      '[AnalysisService.getNGramFrequencies] Tokens after tokenization: ${tokens.length}',
+    );
+
+    if (useStopWords) {
+      print(
+        '[AnalysisService.getNGramFrequencies] Applying stop word filtering to tokens.',
+      );
+      final List<String> stopWordsToUse =
+          (customStopWords != null && customStopWords.isNotEmpty)
+              ? customStopWords
+              : defaultStopWords.toList();
+      tokens = _filterStopWords(tokens, stopWordsToUse);
+      print(
+        '[AnalysisService.getNGramFrequencies] Tokens after stop word filtering: ${tokens.length}',
+      );
+    }
+
+    final List<String> nGrams = _generateNGrams(tokens, nValueForNGram);
+    if (nGrams.isEmpty) {
+      print(
+        '[AnalysisService.getNGramFrequencies] No n-grams generated, returning empty frequencies.',
+      );
+      return {};
+    }
+
+    final frequencies = _calculateWordFrequencies(
+      nGrams,
+    ); // Reusing the same frequency calculator
+    print(
+      '[AnalysisService.getNGramFrequencies] Returning ${frequencies.length} $nValueForNGram-gram frequencies.',
+    );
+    return frequencies;
+  }
+
+  /// Gets the top N most frequent n-grams.
+  ///
+  /// [projectDb] is the opened database connection for the specific project.
+  /// [nValueForNGram] is the 'n' in n-gram (e.g., 3 for trigrams).
+  /// [topNCount] the number of top n-grams to return.
+  /// [useStopWords] whether to filter out stop words from tokens before generating n-grams.
+  /// [customStopWords] an optional list of custom stop words.
+  Future<Map<String, int>> getTopNNGrams(
+    Database projectDb,
+    int nValueForNGram,
+    int topNCount, {
+    bool useStopWords =
+        false, // Kept for future use, but will be false by default from provider
+    List<String>? customStopWords, // Kept for future use
+  }) async {
+    print(
+      '[AnalysisService.getTopNNGrams] Called for top $topNCount of $nValueForNGram-grams. useStopWords: $useStopWords, customStopWords count: ${customStopWords?.length ?? 'N/A'}',
+    );
+    final frequencies = await getNGramFrequencies(
+      projectDb,
+      nValueForNGram,
+      useStopWords: useStopWords, // Pass it through
+      customStopWords: customStopWords, // Pass it through
+    );
+    if (frequencies.isEmpty) {
+      print(
+        '[AnalysisService.getTopNNGrams] N-gram frequencies map is empty, returning empty top N.',
+      );
+      return {};
+    }
+    print(
+      '[AnalysisService.getTopNNGrams] Got ${frequencies.length} n-gram frequencies. Sorting...',
+    );
+    final sortedNGrams =
+        frequencies.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+
+    final topN = sortedNGrams.take(topNCount);
+    print(
+      '[AnalysisService.getTopNNGrams] Returning ${topN.length} top $nValueForNGram-grams.',
+    );
     return Map.fromEntries(topN);
   }
 
